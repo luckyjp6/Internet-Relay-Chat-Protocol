@@ -16,7 +16,7 @@ int main(int argc, char **argv)
     int	i, nready;
 
     clilen = sizeof(cliaddr);
-	
+	 
     
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
     int reuse = 1;

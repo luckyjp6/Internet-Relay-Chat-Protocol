@@ -7,7 +7,7 @@ IRC: clean $(objects)
 
 $(objects): functions.h
 	g++ -c $(source)
-
+ 
 .PHONY: clean
 clean:
 	rm *.o

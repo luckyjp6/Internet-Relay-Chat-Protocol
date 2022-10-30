@@ -26,7 +26,7 @@
 struct Client_info {
     char name[25];
     sockaddr_in addr;
-};
+}; 
 
 struct broadcast_msg{
     int except;

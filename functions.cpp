@@ -46,7 +46,7 @@ void close_client(int index) {
 
     printf("* client %s:%d disconnected\n", inet_ntoa(client_info[index].addr.sin_addr), client_info[index].addr.sin_port);
 }
-
+ 
 void error_cmd(char *cmd, int to) {
     char msg[MSG_SIZE];
     write_time(to);

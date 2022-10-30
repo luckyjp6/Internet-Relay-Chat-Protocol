@@ -45,7 +45,7 @@ void welcome_new_client(int client_index, int connfd, sockaddr_in &cliaddr) {
     printf("* client connected from %s:%d\n", inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port);
 
 }
-
+  
 void print_chat(char *buf, int client_index) {
     broadcast_msg tmp;
     memset(tmp.msg, '\0', MSG_SIZE);
