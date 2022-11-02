@@ -1,5 +1,6 @@
 #include "functions.h"
 #include "print_msg.h"
+#include "error_func.h"
 
 extern int maxi, num_user;
 extern Client_info client_info[OPEN_MAX];
@@ -72,19 +73,17 @@ int main(int argc, char **argv)
                 printf("too many clients\n");
                 continue;
             }
-
-            welcome_new_client(i, connfd, cliaddr);
-
-            if (--nready <= 0) 
-            {
-                broadcast();
-                continue;
-            }
+            reset_client(i);
+        
+            client[i].events = POLLRDNORM;
+            if (i > maxi) maxi = i;
+        
+            printf("* client connected from %s:%d\n", inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port);
         }
         
         /* check all clients */
 		int sockfd, n;
-        char buf[MSG_SIZE-50];
+        char buf[MSG_SIZE];
         
         for (i = 1; i <= maxi; i++) 
         {
@@ -93,45 +92,58 @@ int main(int argc, char **argv)
             {
                 /* read input*/
                 memset(buf, '\0', sizeof(buf));
+
                 if ( (n = read(sockfd, buf, MSG_SIZE-50)) < 0) 
                 { 
                     if (errno == ECONNRESET) close_client(i); /* connection reset by client */
-                    else err_sys("read error");
+                    // else err_sys("read error");
                 } 
                 else if (n == 0) close_client(i); /* connection closed by client */
                 else /* read command */
-                {   
-                    /* chat */
-                    if (buf[0] != '/') 
-                    {
-                        print_chat(buf, i);
-
-                        if (--nready <= 0) break;
-                        else continue;
-                    }
+                {
+printf("received: %s\n", buf);
                     
                     const char *new_line = " \n";
                     char *command;
                     command = strtok(buf, new_line);
-
-                    if (strcmp(command, "/name") == 0) 
+                    tolower_str(command);
+                    
+                    if (strcmp(command, "nick") == 0) 
                     {
-                        char *nick_name;
-                        
-
+                        char *nick_name;                      
                         nick_name = strtok(NULL, new_line);
-                        if (nick_name == NULL) {
-                            error_cmd(buf, i);
-                            if (--nready <= 0) break;
-                            else continue;
-                        }
-
-                        print_name(buf, i, nick_name);
+                        if (check_nick_name(i, nick_name)) goto next;
+                        
+                        memset(client_info[i].nick_name, '\0', sizeof(client_info[i].nick_name));
+                        strcpy(client_info[i].nick_name, nick_name);
+                        
+    // Is it true that we don't need to return anything on command "NICK" ???
+                        // first time register
+                        // if (strlen(client_info[i].nick_name) == 0) {
+                        //     memset(client_info[i].nick_name, ' ', sizeof(client_info[i].nick_name));
+                        //     strcpy(client_info[i].nick_name, nick_name);
+                        // }
+                        // else print_name(i, nick_name);
                     }
-                    else if (strcmp(command, "/who") == 0) print_who(i);
-                    else error_cmd(buf, i);
+                    else if (strcmp(command, "ping") == 0) print_ping(i);
+                    else if (strcmp(command, "user") == 0) 
+                    {
+                        char *args[4]; // <username> <hostname> <servername> <realname>
+                        for (int i = 0; i < 4; i++) 
+                        {
+                            args[i] = strtok(NULL, new_line);
+                            if (args[i] == NULL) {
+                                not_enough_args(i);
+                                goto next;
+                            }
+                        }
+                        print_user(i, args);
+                        welcome_new_client(i);
+                    }
+                    else if (strcmp(command, "quit") == 0) close_client(i);
+                    // else error_cmd(buf, i);
                 }
-                
+next:                
                 if (--nready <= 0) break; /* no more readable descs */
             }
         }

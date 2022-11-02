@@ -1,13 +1,21 @@
-objects = main.o functions.o print_msg.o
+objects = functions.o print_msg.o error_func.o
 source = $(objects:.o=.cpp)
 
-.PHONY: IRC
-IRC: clean $(objects)
-	g++ -o IRC $(objects)
+IRC: main.o $(objects)
+	g++ -o IRC main.o $(objects)
 
-$(objects): functions.h
-	g++ -c $(source)
+main.o : $(objects:.o=.h)
+	g++ -c main.cpp
+
+functions.o : 
+	g++ -c functions.cpp
+
+print_msg.o : name.h functions.h
+	g++ -c print_msg.cpp
+
+error_func.o : functions.h
+	g++ -c error_func.cpp
  
 .PHONY: clean
 clean:
-	rm *.o
+	-rm IRC $(objects)

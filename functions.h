@@ -21,10 +21,14 @@
 #include <vector>
 
 #define OPEN_MAX 1024
-#define MSG_SIZE 300
+#define MSG_SIZE 550
+#define NAME_LENGTH 10
+#define SERVER_NAME "jp6jp6"
 
 struct Client_info {
-    char name[25];
+    char nick_name[NAME_LENGTH];
+    char user_name[NAME_LENGTH];
+    char real_name[NAME_LENGTH];
     sockaddr_in addr;
 }; 
 
@@ -45,12 +49,15 @@ extern Client_info client_info[OPEN_MAX];
 extern pollfd client[OPEN_MAX];
 extern std::vector<broadcast_msg> b_msg;
 
+void tolower_str(char *str);
+
 void time_format(char* tt, int tt_size);
 void write_time(int index);
 
+void reset_client(int index);
 void close_client(int index);
 
-void error_cmd(char *cmd, int to);
-void err_sys(const char *err);
+// void error_cmd(char *cmd, int to);
+// void err_sys(const char *err);
 
 #endif
