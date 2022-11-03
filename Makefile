@@ -10,7 +10,7 @@ main.o : $(objects:.o=.h)
 functions.o : 
 	g++ -c functions.cpp
 
-print_msg.o : name.h functions.h
+print_msg.o : functions.h
 	g++ -c print_msg.cpp
 
 error_func.o : functions.h

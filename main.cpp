@@ -2,11 +2,6 @@
 #include "print_msg.h"
 #include "error_func.h"
 
-extern int maxi, num_user;
-extern Client_info client_info[OPEN_MAX];
-extern pollfd client[OPEN_MAX];
-extern std::vector<broadcast_msg> b_msg;
-
 int main(int argc, char **argv)
 {
 	int					listenfd, connfd;
@@ -16,8 +11,9 @@ int main(int argc, char **argv)
 	void				sig_chld(int);
     int	i, nready;
 
+    init();
+
     clilen = sizeof(cliaddr);
-	 
     
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
     int reuse = 1;
@@ -45,8 +41,7 @@ int main(int argc, char **argv)
     client[0].fd = listenfd;
     client[0].events = POLLRDNORM;
 
-    for (i = 1; i < OPEN_MAX; i++) client[i].fd = -1; /* -1: available entry */
-
+    Client_info tmp_client;
 	for ( ; ; ) 
     {
         nready = poll(client, maxi+1, -1);
@@ -62,8 +57,9 @@ int main(int argc, char **argv)
             {
                 if (client[i].fd < 0) 
                 {
-                    client[i].fd = connfd; 
-                    client_info[i].addr = cliaddr;
+                    client[i].fd = connfd;
+                    tmp_client.addr = cliaddr;
+                    tmp_client.connfd = connfd;
                     break;
                 }
             }
@@ -73,7 +69,6 @@ int main(int argc, char **argv)
                 printf("too many clients\n");
                 continue;
             }
-            reset_client(i);
         
             client[i].events = POLLRDNORM;
             if (i > maxi) maxi = i;
@@ -101,45 +96,86 @@ int main(int argc, char **argv)
                 else if (n == 0) close_client(i); /* connection closed by client */
                 else /* read command */
                 {
-printf("received: %s\n", buf);
+
+printf("received: %s\n", buf);                    
+                    const char *new_line = " \n\r\0";
+                    char *command = strtok(buf, new_line);
                     
-                    const char *new_line = " \n";
-                    char *command;
-                    command = strtok(buf, new_line);
+                    if (buf[0] == ':') 
+                    {
+                        command += 1;
+                        // if (name_client.find(command) == name_client.end()) goto next;
+                        command = strtok(NULL, new_line);
+                    }
+                    
                     tolower_str(command);
-                    
+printf("command: %s, %ld, %d\n", command, strlen(command), (int)command[strlen(command)-1]);
                     if (strcmp(command, "nick") == 0) 
                     {
-                        char *nick_name;                      
-                        nick_name = strtok(NULL, new_line);
-                        if (check_nick_name(i, nick_name)) goto next;
+                        char *new_nick;
+                        new_nick = strtok(NULL, new_line);
+
                         
-                        memset(client_info[i].nick_name, '\0', sizeof(client_info[i].nick_name));
-                        strcpy(client_info[i].nick_name, nick_name);
+                        if (check_nick_name(i, new_nick)) goto next;
                         
-    // Is it true that we don't need to return anything on command "NICK" ???
-                        // first time register
-                        // if (strlen(client_info[i].nick_name) == 0) {
-                        //     memset(client_info[i].nick_name, ' ', sizeof(client_info[i].nick_name));
-                        //     strcpy(client_info[i].nick_name, nick_name);
-                        // }
-                        // else print_name(i, nick_name);
-                    }
-                    else if (strcmp(command, "ping") == 0) print_ping(i);
-                    else if (strcmp(command, "user") == 0) 
-                    {
-                        char *args[4]; // <username> <hostname> <servername> <realname>
-                        for (int i = 0; i < 4; i++) 
+                        std::string s(new_nick);
+                        for (auto it = name_client.begin(); it != name_client.end(); it++) 
                         {
-                            args[i] = strtok(NULL, new_line);
-                            if (args[i] == NULL) {
-                                not_enough_args(i);
+                            if (it->second.connfd == sockfd) 
+                            {
+                                name_client[s] = it->second;
+                                name_client.erase(it);
                                 goto next;
                             }
                         }
-                        print_user(i, args);
-                        welcome_new_client(i);
+                        
+                        
+                        name_client[s] = tmp_client;
                     }
+                    else if (strcmp(command, "user") == 0) 
+                    {
+
+                        char *args[4]; // <username> <hostname> <servername> <realname>
+                        for (int j = 0; j < 4; j++) 
+                        {
+                            args[j] = strtok(NULL, new_line);
+                            if (args[j] == NULL) {
+                                not_enough_args(command);
+                                goto next;
+                            }
+                        }
+                        
+                        // register new user and show welcome message
+                        for (auto it = name_client.begin(); it != name_client.end(); it++)
+                        {
+                            if (it->second.connfd == sockfd)
+                            {
+                                print_user(it->first, args);
+                                welcome_new_client(it->first);
+                                break;
+                            }
+                        }
+                        
+                    }                    
+                    else if (strcmp(command, "list") == 0) 
+                    {
+printf("in list\n");    
+                        /*read all wanted channel and list them all*/
+                        char *channel = strtok(NULL, new_line);
+                        if (channel == NULL)
+                        {
+                            printf("no channel specified\n");
+                            /*list all channels*/
+                            print_all_channels(sockfd);
+                        }
+                        else
+                        {printf("channel: %d\n", (int)channel[0]);
+// channel != NULL ??????????????????????
+                            
+                        }
+                    }
+                    else if (strcmp(command, "ping") == 0) print_ping(sockfd);
+                    // else if (strcmp(command, "close") == 0) close_client(i);
                     else if (strcmp(command, "quit") == 0) close_client(i);
                     // else error_cmd(buf, i);
                 }
