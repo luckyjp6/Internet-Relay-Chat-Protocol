@@ -109,7 +109,6 @@ printf("received: %s\n", buf);
                     }
                     
                     tolower_str(command);
-printf("command: %s, %ld, %d\n", command, strlen(command), (int)command[strlen(command)-1]);
                     if (strcmp(command, "nick") == 0) 
                     {
                         char *new_nick;
@@ -158,20 +157,17 @@ printf("command: %s, %ld, %d\n", command, strlen(command), (int)command[strlen(c
                         
                     }                    
                     else if (strcmp(command, "list") == 0) 
-                    {
-printf("in list\n");    
+                    {    
                         /*read all wanted channel and list them all*/
                         char *channel = strtok(NULL, new_line);
                         if (channel == NULL)
                         {
-                            printf("no channel specified\n");
                             /*list all channels*/
                             print_all_channels(sockfd);
                         }
                         else
-                        {printf("channel: %d\n", (int)channel[0]);
-// channel != NULL ??????????????????????
-                            
+                        {
+                            /*list specific channels*/   
                         }
                     }
                     else if (strcmp(command, "ping") == 0) print_ping(sockfd);
