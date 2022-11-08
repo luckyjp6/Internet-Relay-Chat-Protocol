@@ -44,11 +44,11 @@ void welcome_new_client(std::string nick_name)
     write(connfd, welcome_msg, strlen(welcome_msg));
 }
 
-void print_ping(int connfd) 
+void print_ping(int connfd, char *host) 
 {
     char msg[MSG_SIZE];
     memset(msg, '\0', MSG_SIZE);
-    sprintf(msg, ":%s PONG :%s\n", SERVER_NAME, SERVER_NAME);
+    sprintf(msg, ":%s PONG :%s\n", SERVER_NAME, host);
     write(connfd, msg, strlen(msg));
 }
 
@@ -285,6 +285,11 @@ void print_channel_info(int connfd, std::vector<std::string> wanted_channels)
 
 void print_msg_channel(int connfd, char *text, std::string channel_name)
 {
+    if (channels.find(channel_name) == channels.end())
+    {
+        no_such_channel(connfd, channel_name);
+        return;
+    }
     char msg[MSG_SIZE];
 
     memset(msg, '\0', MSG_SIZE);
