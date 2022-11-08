@@ -2,23 +2,6 @@
 #include "print_msg.h"
 #include "error_func.h"
 
-void broadcast() {
-    // for (int i = 0; i < b_msg.size(); i++) 
-    // { 
-    //     for (int j = 1; j <= maxi; j++) 
-    //     {
-            
-    //         if (j == b_msg[i].except) continue;
-            
-    //         write_time(j);
-    //         if (client[j].fd < 0) continue;
-
-    //         if (send(client[j].fd, b_msg[i].msg, b_msg[i].msg_size, MSG_NOSIGNAL) < 0) close_client(j);
-    //     }
-    // }
-    // b_msg.clear();
-}
-
 void welcome_new_client(std::string nick_name) 
 {
     int connfd = name_client[nick_name].connfd;
@@ -60,15 +43,6 @@ void welcome_new_client(std::string nick_name)
     sprintf(welcome_msg, ":%s 376 %s :- End of message of the day -\n", SERVER_NAME, nick_name.data());
     write(connfd, welcome_msg, strlen(welcome_msg));
 }
-  
-void print_chat(char *buf, int client_index) 
-{
-    // broadcast_msg tmp;
-    // memset(tmp.msg, '\0', MSG_SIZE);
-    // sprintf(tmp.msg, "*** User <%s> %s", client_info[client_index].nick_name, buf);
-    // tmp.set(client_index);
-    // b_msg.push_back(tmp);
-}
 
 void print_ping(int connfd) 
 {
@@ -90,7 +64,7 @@ void print_nick(std::string old_nick, std::string new_nick)
     name_client.erase(old_nick);
 }
 
-void print_user(std::string nick_name, char** names)
+void set_user(std::string nick_name, char** names)
 {
     // <username> <hostname> <servername> <realname>
     strcpy(name_client[nick_name].user_name, names[0]);
@@ -99,50 +73,7 @@ void print_user(std::string nick_name, char** names)
     // hostname and servername are used for server vs. server
 }
 
-void print_all_users(int connfd)
-{
-    char msg[MSG_SIZE];
-    // start
-    memset(msg, '\0', MSG_SIZE);
-    sprintf(msg, ":%s 392 %s :%-8s %-9s %-8s\n", SERVER_NAME, fd_name[connfd].data(), "UserID", "Terminal", "Host");
-    write(connfd, msg, strlen(msg));
-
-    // body
-    for (auto it : name_client)
-    {
-        memset(msg, '\0', MSG_SIZE);
-        sprintf(msg, ":%s 393 %s :%-8s %-9s %-8s\n", SERVER_NAME, fd_name[connfd].data(), it.first.data(), "-", inet_ntoa(it.second.addr.sin_addr));
-        write(connfd, msg, strlen(msg));
-    }
-
-    // end
-    memset(msg, '\0', MSG_SIZE);
-    sprintf(msg, ":%s 394 %s :End of users\n", SERVER_NAME, fd_name[connfd].data());
-    write(connfd, msg, strlen(msg));
-}
-
-void print_user_in_channel(std::vector<std::string> wanted_channels, int connfd)
-{
-    for (auto channel : wanted_channels)
-    {
-        char msg[MSG_SIZE];
-        if (channels.find(channel) != channels.end())
-        {
-            for (auto user : channels[channel].connected)
-            {
-                memset(msg, '\0', MSG_SIZE);
-                sprintf(msg, ":%s 353 %s %s :%s\n", SERVER_NAME, fd_name[connfd].data(), channel.data(), fd_name[user].data());
-                write(connfd, msg, strlen(msg));
-            }
-        }
-
-        memset(msg, '\0', MSG_SIZE);
-        sprintf(msg, ":%s 366 %s %s :End of Names List\n", SERVER_NAME, fd_name[connfd].data(), channel.data());
-        write(connfd, msg, strlen(msg));
-    }
-} 
-
-void print_join(std::vector<std::string> join_channel, int connfd)
+void print_join(int connfd, std::vector<std::string> join_channel)
 {
     for (int i = 0; i < join_channel.size(); i++) 
     {
@@ -217,7 +148,7 @@ void print_part(int connfd, std::string channel_name)
     write(connfd, msg, strlen(msg));
 }
 
-void print_topic(std::string topic, std::string channel_name, int connfd) 
+void print_topic(int connfd, std::string topic, std::string channel_name) 
 {
     char msg[MSG_SIZE];
     memset(msg, '\0', MSG_SIZE);
@@ -239,7 +170,68 @@ void print_topic(std::string topic, std::string channel_name, int connfd)
     write(connfd, msg, strlen(msg));
 }
 
-void print_all_channels(int connfd)
+void print_all_users(int connfd)
+{
+    char msg[MSG_SIZE];
+    // start
+    memset(msg, '\0', MSG_SIZE);
+    sprintf(msg, ":%s 392 %s :%-8s %-9s %-8s\n", SERVER_NAME, fd_name[connfd].data(), "UserID", "Terminal", "Host");
+    write(connfd, msg, strlen(msg));
+
+    // body
+    for (auto it : name_client)
+    {
+        memset(msg, '\0', MSG_SIZE);
+        sprintf(msg, ":%s 393 %s :%-8s %-9s %-8s\n", SERVER_NAME, fd_name[connfd].data(), it.first.data(), "-", inet_ntoa(it.second.addr.sin_addr));
+        write(connfd, msg, strlen(msg));
+    }
+
+    // end
+    memset(msg, '\0', MSG_SIZE);
+    sprintf(msg, ":%s 394 %s :End of users\n", SERVER_NAME, fd_name[connfd].data());
+    write(connfd, msg, strlen(msg));
+}
+
+void print_channel_users(int connfd)
+{
+    for (auto channel : channels)
+    {
+        char msg[MSG_SIZE];
+        for (auto user : channel.second.connected)
+        {
+            memset(msg, '\0', MSG_SIZE);
+            sprintf(msg, ":%s 353 %s %s :%s\n", SERVER_NAME, fd_name[connfd].data(), channel.first.data(), fd_name[user].data());
+            write(connfd, msg, strlen(msg));
+        }        
+
+        memset(msg, '\0', MSG_SIZE);
+        sprintf(msg, ":%s 366 %s %s :End of Names List\n", SERVER_NAME, fd_name[connfd].data(), channel.first.data());
+        write(connfd, msg, strlen(msg));
+    }
+}
+
+void print_channel_users(int connfd, std::vector<std::string> wanted_channels)
+{
+    for (auto channel : wanted_channels)
+    {
+        char msg[MSG_SIZE];
+        if (channels.find(channel) != channels.end())
+        {
+            for (auto user : channels[channel].connected)
+            {
+                memset(msg, '\0', MSG_SIZE);
+                sprintf(msg, ":%s 353 %s %s :%s\n", SERVER_NAME, fd_name[connfd].data(), channel.data(), fd_name[user].data());
+                write(connfd, msg, strlen(msg));
+            }
+        }
+
+        memset(msg, '\0', MSG_SIZE);
+        sprintf(msg, ":%s 366 %s %s :End of Names List\n", SERVER_NAME, fd_name[connfd].data(), channel.data());
+        write(connfd, msg, strlen(msg));
+    }
+} 
+
+void print_channel_info(int connfd)
 {
     char msg[MSG_SIZE];
     std::string nick_name = fd_name[connfd];
@@ -250,10 +242,10 @@ void print_all_channels(int connfd)
     write(connfd, msg, strlen(msg));
 
     // list body
-    for (auto it = channels.begin(); it != channels.end(); it++) 
+    for (auto it : channels) 
     {
         memset(msg, '\0', MSG_SIZE);
-        sprintf(msg, ":%s 322 %s %s %ld :%s\n", SERVER_NAME, nick_name.data(), it->first.data(), it->second.connected.size(), it->second.topic.data());
+        sprintf(msg, ":%s 322 %s %s %ld :%s\n", SERVER_NAME, nick_name.data(), it.first.data(), it.second.connected.size(), it.second.topic.data());
         write(connfd, msg, strlen(msg));
     }
 
@@ -263,7 +255,35 @@ void print_all_channels(int connfd)
     write(connfd, msg, strlen(msg));
 }
 
-void print_msg_channel(char *text, std::string channel_name, int connfd)
+void print_channel_info(int connfd, std::vector<std::string> wanted_channels)
+{
+    char msg[MSG_SIZE];
+    std::string nick_name = fd_name[connfd];
+
+    // list start
+    memset(msg, '\0', MSG_SIZE);
+    sprintf(msg, ":%s 321 %s Channel :Users Name\n", SERVER_NAME, nick_name.data());
+    write(connfd, msg, strlen(msg));
+
+    // list body
+    for (auto it : wanted_channels) 
+    {
+        if (channels.find(it) == channels.end()) {
+            no_such_channel(connfd, it);
+            continue;
+        }
+        memset(msg, '\0', MSG_SIZE);
+        sprintf(msg, ":%s 322 %s %s %ld :%s\n", SERVER_NAME, nick_name.data(), it.data(), channels[it].connected.size(), channels[it].topic.data());
+        write(connfd, msg, strlen(msg));
+    }
+
+    //list end
+    memset(msg, '\0', MSG_SIZE);
+    sprintf(msg, ":%s 323 %s :End of Liset\n", SERVER_NAME, nick_name.data());
+    write(connfd, msg, strlen(msg));
+}
+
+void print_msg_channel(int connfd, char *text, std::string channel_name)
 {
     char msg[MSG_SIZE];
 

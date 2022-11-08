@@ -47,7 +47,7 @@ void not_on_channel(int connfd, std::string channel)
     write(connfd, error, strlen(error));
 }
 
-void no_recipient(char *command, int connfd)
+void no_recipient( int connfd, char *command)
 {
     char error[MSG_SIZE];
     memset(error, '\0', MSG_SIZE);
@@ -71,7 +71,7 @@ void no_such_channel(int connfd, std::string channel)
     write(connfd, error, strlen(error));
 }
 
-void error_cmd(char *command, int connfd) 
+void error_cmd(int connfd, char *command) 
 {
     char error[MSG_SIZE];
     memset(error, '\0', MSG_SIZE);
