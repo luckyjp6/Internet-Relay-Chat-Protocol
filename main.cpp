@@ -106,12 +106,13 @@ printf("\nreceived: %s", buf);
                     if (buf[0] == ':') 
                     {
                         command += 1;
-                        // if (name_client.find(command) == name_client.end()) goto next;
+                        if (name_client.find(command) == name_client.end()) {
+                            not_registerd(sockfd, command);
+                            goto next;
+                        }
                         command = strtok(NULL, new_line);
                     }
-                    
-                    // tolower_str(command);
-// printf("command: %s, %ld, %d\n", command, strlen(command), (int)command[strlen(command)-1]);
+
                     if (strcmp(command, "NICK") == 0) 
                     {
                         char *new_nick;
@@ -171,12 +172,34 @@ printf("\nreceived: %s", buf);
                     {
                         print_all_users(sockfd);
                     }
+                    else if (strcmp(command, "NAMES") == 0)
+                    {
+                        char *channel_char = strtok(NULL, new_line);
+                        if (channel_char == NULL)
+                        {
+                            print_all_channels(sockfd);
+                            goto next;
+                        }
+                        else
+                        {
+                            std::vector<std::string> wanted_channels;
+                            do
+                            {
+                                wanted_channels.push_back(std::string (channel_char));
+                                channel_char = strtok(NULL, new_line);
+                            }while (channel_char != NULL);
+                            print_user_in_channel(wanted_channels, sockfd);
+                        } 
+                    }
                     else if (strcmp(command, "LIST") == 0) 
                     { 
                         /*read all wanted channel and list them all*/
                         char *channel = strtok(NULL, new_line);
                         if (channel == NULL)
+                        {
                             print_all_channels(sockfd);
+                            goto next;
+                        }                            
                         else
                         {
                             printf("channel: %d\n", (int)channel[0]);
@@ -192,7 +215,8 @@ printf("\nreceived: %s", buf);
                             not_enough_args(command);
                             goto next;
                         }
-
+                        
+                        if (channel[0] != '#') no_such_channel(sockfd, channel);
                         std::vector<std::string> join_channel;
                         do 
                         {
@@ -233,15 +257,27 @@ printf("\nreceived: %s", buf);
                             print_topic(topic, channel, sockfd);
                         }
                     }
-                    // else if (strcmp(command, "PRIVMSG") == 0) 
-                    // {
-                    //     char *to = strtok(NULL, new_line);
-                    //     char *msg = strtok(NULL, new_line);
-                    //     if (to[0] == '#') print_msg_channel(msg+1, to);
-                    //     else print_msg(msg+1, to);
-                    // }
+                    else if (strcmp(command, "PRIVMSG") == 0) 
+                    {
+                        char *to_char = strtok(NULL, new_line);
+                        if (to_char == NULL) {
+                            no_recipient(command, sockfd);
+                            goto next;
+                        }
+                        std::string to(to_char);
+
+                        char *msg = strtok(NULL, new_line);
+                        if (msg == NULL) 
+                        {
+                            no_text_send(sockfd);
+                            goto next;
+                        }
+
+                        msg += 1;
+                        if (to[0] == '#') print_msg_channel(msg, to, sockfd);
+                        // else print_private_msg(msg, to);
+                    }
                     else if (strcmp(command, "PING") == 0) print_ping(sockfd);
-                    // else if (strcmp(command, "close") == 0) close_client(i);
                     else if (strcmp(command, "QUIT") == 0) close_client(i);
                     else error_cmd(command, connfd);
                 }
