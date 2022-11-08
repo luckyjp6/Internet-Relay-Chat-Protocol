@@ -73,7 +73,7 @@ int main(int argc, char **argv)
             client[i].events = POLLRDNORM;
             if (i > maxi) maxi = i;
         
-            printf("* client connected from %s:%d\n", inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port);
+            // printf("* client connected from %s:%d\n", inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port);
         }
         
         /* check all clients */
@@ -86,7 +86,7 @@ int main(int argc, char **argv)
             if (client[i].revents & (POLLRDNORM | POLLERR)) 
             {
                 /* read input*/
-                memset(buf, '\0', sizeof(buf));
+                memset(buf, '\0', MSG_SIZE);
 
                 if ( (n = read(sockfd, buf, MSG_SIZE-50)) < 0) 
                 { 
@@ -97,9 +97,11 @@ int main(int argc, char **argv)
                 else /* read command */
                 {
 
-printf("received: %s\n", buf);                    
+printf("\nreceived: %s", buf);                    
                     const char *new_line = " \n\r\0";
                     char *command = strtok(buf, new_line);
+
+                    if (command == NULL) goto next;
                     
                     if (buf[0] == ':') 
                     {
@@ -108,9 +110,9 @@ printf("received: %s\n", buf);
                         command = strtok(NULL, new_line);
                     }
                     
-                    tolower_str(command);
-printf("command: %s, %ld, %d\n", command, strlen(command), (int)command[strlen(command)-1]);
-                    if (strcmp(command, "nick") == 0) 
+                    // tolower_str(command);
+// printf("command: %s, %ld, %d\n", command, strlen(command), (int)command[strlen(command)-1]);
+                    if (strcmp(command, "NICK") == 0) 
                     {
                         char *new_nick;
                         new_nick = strtok(NULL, new_line);
@@ -119,20 +121,28 @@ printf("command: %s, %ld, %d\n", command, strlen(command), (int)command[strlen(c
                         if (check_nick_name(i, new_nick)) goto next;
                         
                         std::string s(new_nick);
-                        for (auto it = name_client.begin(); it != name_client.end(); it++) 
+                        if (fd_name[sockfd].size() == 0) 
                         {
-                            if (it->second.connfd == sockfd) 
-                            {
-                                name_client[s] = it->second;
-                                name_client.erase(it);
-                                goto next;
-                            }
+                            name_client[s] = tmp_client;
+                            fd_name[sockfd] = s;
                         }
-                        
-                        
-                        name_client[s] = tmp_client;
+                        else 
+                        {
+                            name_client[s] = name_client[fd_name[sockfd]];
+                            name_client.erase(fd_name[sockfd]);
+                            fd_name[sockfd] = s;
+                        }
+                        // for (auto it = name_client.begin(); it != name_client.end(); it++) 
+                        // {
+                        //     if (it->second.connfd == sockfd) 
+                        //     {
+                        //         name_client[s] = it->second;
+                        //         name_client.erase(it);
+                        //         goto next;
+                        //     }
+                        // }
                     }
-                    else if (strcmp(command, "user") == 0) 
+                    else if (strcmp(command, "USER") == 0) 
                     {
 
                         char *args[4]; // <username> <hostname> <servername> <realname>
@@ -156,28 +166,84 @@ printf("command: %s, %ld, %d\n", command, strlen(command), (int)command[strlen(c
                             }
                         }
                         
-                    }                    
-                    else if (strcmp(command, "list") == 0) 
+                    }
+                    else if (strcmp(command, "USERS") == 0)
                     {
-printf("in list\n");    
+                        print_all_users(sockfd);
+                    }
+                    else if (strcmp(command, "LIST") == 0) 
+                    { 
                         /*read all wanted channel and list them all*/
                         char *channel = strtok(NULL, new_line);
                         if (channel == NULL)
-                        {
-                            printf("no channel specified\n");
-                            /*list all channels*/
                             print_all_channels(sockfd);
-                        }
                         else
-                        {printf("channel: %d\n", (int)channel[0]);
-// channel != NULL ??????????????????????
+                        {
+                            printf("channel: %d\n", (int)channel[0]);
+                            // print_specified_channels();
                             
                         }
                     }
-                    else if (strcmp(command, "ping") == 0) print_ping(sockfd);
+                    else if (strcmp(command, "JOIN") == 0)
+                    {
+                        char *channel = strtok(NULL, new_line);
+                        if (channel == NULL)
+                        {
+                            not_enough_args(command);
+                            goto next;
+                        }
+
+                        std::vector<std::string> join_channel;
+                        do 
+                        {
+                            join_channel.push_back(channel);
+                            channel = strtok(NULL, new_line);
+                        } while (channel != NULL);
+
+                        print_join(join_channel, sockfd);
+                    }
+                    else if (strcmp(command, "PART") == 0)
+                    {
+                        char *channel = strtok(NULL, new_line);
+                        if (channel == NULL) 
+                        {
+                            not_enough_args(command);
+                            goto next;
+                        }
+                        
+                        print_part(sockfd, channel);
+                    }
+                    else if (strcmp(command, "TOPIC") == 0)
+                    {
+                        char *channel_char = strtok(NULL, new_line);
+                        if (channel_char == NULL)
+                        {
+                            not_enough_args(command);
+                            goto next;
+                        }
+
+                        std::string channel(channel_char);
+
+                        char *topic_char = strtok(NULL, new_line);
+                        if (topic_char == NULL) 
+                            print_topic("", channel, sockfd);
+                        else 
+                        {
+                            std::string topic(topic_char);
+                            print_topic(topic, channel, sockfd);
+                        }
+                    }
+                    // else if (strcmp(command, "PRIVMSG") == 0) 
+                    // {
+                    //     char *to = strtok(NULL, new_line);
+                    //     char *msg = strtok(NULL, new_line);
+                    //     if (to[0] == '#') print_msg_channel(msg+1, to);
+                    //     else print_msg(msg+1, to);
+                    // }
+                    else if (strcmp(command, "PING") == 0) print_ping(sockfd);
                     // else if (strcmp(command, "close") == 0) close_client(i);
-                    else if (strcmp(command, "quit") == 0) close_client(i);
-                    // else error_cmd(buf, i);
+                    else if (strcmp(command, "QUIT") == 0) close_client(i);
+                    else error_cmd(command, connfd);
                 }
 next:                
                 if (--nready <= 0) break; /* no more readable descs */

@@ -3,5 +3,6 @@
 
 bool check_nick_name(int client_index, char *nick_name);
 void not_enough_args(char *command);
+void error_cmd(char *command, int connfd);
 
 #endif
