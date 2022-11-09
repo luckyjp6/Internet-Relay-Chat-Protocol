@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <vector>
 #include <map>
+#include <algorithm>
 
 #define OPEN_MAX 1024
 #define MSG_SIZE 550
@@ -39,11 +40,9 @@ struct broadcast_msg
     int except;
     char msg[MSG_SIZE];
     int msg_size;
-    void set(int e) { //, char m[MSG_SIZE], int s) {
+    void set(int e) {
         except = e;
-        msg_size = sizeof(msg);
-        // memset(msg, '\0', sizeof(msg));
-        // strcpy(msg, m);
+        msg_size = strlen(msg);
     }
 };
 
@@ -52,13 +51,14 @@ struct channel_info
 {
     bool is_private = false;
     char* key;
-    char* topic;
+    std::string topic;
     std::vector<std::string> ban_list;
-    std::vector<std::string> connected;
+    std::vector<int> connected; // connfd
 };
 
 extern int maxi, num_user;
 extern std::map<std::string, Client_info> name_client;
+extern std::string fd_name[OPEN_MAX];
 extern pollfd client[OPEN_MAX];
 extern std::vector<broadcast_msg> b_msg;
 extern std::map<std::string, channel_info> channels;
