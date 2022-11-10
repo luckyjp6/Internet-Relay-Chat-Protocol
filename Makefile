@@ -1,8 +1,8 @@
-objects = functions.o print_msg.o error_func.o
+objects = main.o functions.o print_msg.o error_func.o
 source = $(objects:.o=.cpp)
 
-IRC: main.o $(objects)
-	g++ -o IRC main.o $(objects)
+IRC: $(objects)
+	g++ -o IRC $(objects)
 
 main.o : main.cpp
 	g++ -c main.cpp
