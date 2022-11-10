@@ -49,6 +49,7 @@ int main(int argc, char **argv)
         // new client
         if (client[0].revents & POLLRDNORM) 
         {
+            nready--;
             connfd = accept(listenfd, (sockaddr *) &cliaddr, &clilen);
             num_user ++;
 
@@ -64,16 +65,12 @@ int main(int argc, char **argv)
                 }
             }
 
-            if (i == OPEN_MAX) 
+            if (i == OPEN_MAX) printf("too many clients\n");
+            else
             {
-                printf("too many clients\n");
-                continue;
-            }
-        
-            client[i].events = POLLRDNORM;
-            if (i > maxi) maxi = i;
-        
-            // printf("* client connected from %s:%d\n", inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port);
+                client[i].events = POLLRDNORM;
+                if (i > maxi) maxi = i;
+            }            
         }
         
         /* check all clients */
