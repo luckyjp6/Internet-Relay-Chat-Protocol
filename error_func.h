@@ -2,6 +2,7 @@
 #define ERROR_H
 
 void no_such_channel(int connfd, std::string channel); // 403
+void no_host(int connfd); // 409
 
 void no_recipient(int connfd, char *command); // 411
 void no_text_send(int connfd); // 412

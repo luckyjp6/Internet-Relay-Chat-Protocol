@@ -16,13 +16,29 @@ void init()
     b_msg.clear();
 }
 
-void tolower_str(char *str) 
+int my_connect(int &listenfd, char *port, sockaddr_in &servaddr)
 {
-    for (int i = 0; ; i++) 
+    listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    int reuse = 1;
+    setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&reuse, sizeof(reuse));
+    
+	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_family      = AF_INET;
+	servaddr.sin_addr.s_addr = htonl(0);//INADDR_ANY);
+	servaddr.sin_port        = htons(atoi(port));
+
+	if (bind(listenfd, (const sockaddr *) &servaddr, sizeof(servaddr)) < 0) 
     {
-        if (str[i] == '\0') return;
-        str[i] = tolower(str[i]);
-    }
+		printf("failed to bind\n");
+		return 0;
+	}
+
+	listen(listenfd, 1024);
+    
+    client[0].fd = listenfd;
+    client[0].events = POLLRDNORM;
+
+    return 1;
 }
 
 void close_client(int index) 

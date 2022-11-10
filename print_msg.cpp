@@ -44,11 +44,11 @@ void welcome_new_client(std::string nick_name)
     write(connfd, welcome_msg, strlen(welcome_msg));
 }
 
-void print_ping(int connfd, char *host) 
+void print_ping(int connfd) 
 {
     char msg[MSG_SIZE];
     memset(msg, '\0', MSG_SIZE);
-    sprintf(msg, ":%s PONG :%s\n", SERVER_NAME, host);
+    sprintf(msg, ":%s PONG\n", SERVER_NAME);
     write(connfd, msg, strlen(msg));
 }
 

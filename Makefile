@@ -1,5 +1,4 @@
 objects = main.o functions.o print_msg.o error_func.o
-source = $(objects:.o=.cpp)
 
 IRC: $(objects)
 	g++ -o IRC $(objects)

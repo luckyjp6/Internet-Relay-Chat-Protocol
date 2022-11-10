@@ -8,7 +8,15 @@ void no_such_channel(int connfd, std::string channel)
     write(connfd, error, strlen(error));
 }
 
-void no_recipient( int connfd, char *command)
+void no_host(int connfd)
+{
+    char error[MSG_SIZE];
+    memset(error, '\0', MSG_SIZE);
+    sprintf(error, ":%s 409 %s :No origin specified\n", SERVER_NAME, fd_name[connfd].data());
+    write(connfd, error, strlen(error));
+}
+
+void no_recipient(int connfd, char *command)
 {
     char error[MSG_SIZE];
     memset(error, '\0', MSG_SIZE);

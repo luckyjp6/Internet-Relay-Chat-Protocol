@@ -64,8 +64,7 @@ extern std::vector<broadcast_msg> b_msg;
 extern std::map<std::string, channel_info> channels;
 
 void init();
-
-void tolower_str(char *str);
+int my_connect(int &listenfd, char *port, sockaddr_in &servaddr);
 
 void close_client(int index);
 

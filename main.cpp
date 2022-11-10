@@ -7,39 +7,15 @@ int main(int argc, char **argv)
 	int					listenfd, connfd;
 	pid_t				childpid;
 	socklen_t			clilen;
-	sockaddr_in	cliaddr, servaddr;
+	sockaddr_in	        cliaddr, servaddr;
 	void				sig_chld(int);
-    int	i, nready;
+    int	                i, nready;
 
     init();
 
     clilen = sizeof(cliaddr);
     
-    listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    int reuse = 1;
-    setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&reuse, sizeof(reuse));
-    
-    if (argc < 2) 
-    {
-        printf("Usage: ./a.out [port]\n");
-        return -1;
-    }
-
-	bzero(&servaddr, sizeof(servaddr));
-	servaddr.sin_family      = AF_INET;
-	servaddr.sin_addr.s_addr = htonl(0);//INADDR_ANY);
-	servaddr.sin_port        = htons(atoi(argv[1]));
-
-	if (bind(listenfd, (const sockaddr *) &servaddr, sizeof(servaddr)) < 0) 
-    {
-		printf("failed to bind\n");
-		return -1;
-	}
-
-	listen(listenfd, 1024);
-    
-    client[0].fd = listenfd;
-    client[0].events = POLLRDNORM;
+    my_connect(listenfd, argv[1], servaddr);
 
     Client_info tmp_client;
 	for ( ; ; ) 
@@ -70,7 +46,9 @@ int main(int argc, char **argv)
             {
                 client[i].events = POLLRDNORM;
                 if (i > maxi) maxi = i;
-            }            
+            }  
+
+            if (nready == 0) break;          
         }
         
         /* check all clients */
@@ -157,7 +135,11 @@ int main(int argc, char **argv)
                     }
                     else if (strcmp(command, "PING") == 0) {
                         char *host = strtok(NULL, new_line);
-                        print_ping(sockfd, host);
+                        if (host == NULL) 
+                        {
+                            no_host(sockfd);
+                        }
+                        print_ping(sockfd);
                     }
                     /* list all wanted channels and their information */
                     else if (strcmp(command, "LIST") == 0) 

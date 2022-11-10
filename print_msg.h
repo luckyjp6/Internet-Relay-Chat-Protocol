@@ -4,7 +4,7 @@
 void print_nick(std::string old_nick, std::string new_nick);
 void set_user(std::string nick_name, char** names);
 void welcome_new_client(std::string nick_name);
-void print_ping(int connfd, char *host);
+void print_ping(int connfd);
 
 void print_join(int connfd, std::vector<std::string> join_channel);
 void print_part(int connfd, std::string channel_name);
