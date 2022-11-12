@@ -41,7 +41,6 @@ int main(int argc, char **argv)
     client[0].fd = listenfd;
     client[0].events = POLLRDNORM;
 
-    Client_info tmp_client;
 	for ( ; ; ) 
     {
         nready = poll(client, maxi+1, -1);
@@ -59,8 +58,7 @@ int main(int argc, char **argv)
                 if (client[i].fd < 0) 
                 {
                     client[i].fd = connfd;
-                    tmp_client.addr = cliaddr;
-                    tmp_client.connfd = connfd;
+                    client_info[i].addr = cliaddr;
                     break;
                 }
             }
@@ -74,18 +72,18 @@ int main(int argc, char **argv)
         }
         
         /* check all clients */
-		int sockfd, n;
+		int n;
         char buf[MSG_SIZE];
         
         for (i = 1; i <= maxi; i++) 
         {
-            if ( (sockfd = client[i].fd) < 0) continue;
+            if (client[i].fd < 0) continue;
             if (client[i].revents & (POLLRDNORM | POLLERR)) 
             {
                 /* read input*/
                 memset(buf, '\0', MSG_SIZE);
 
-                if ( (n = read(sockfd, buf, MSG_SIZE-50)) < 0) 
+                if ( (n = read(client[i].fd, buf, MSG_SIZE-50)) < 0) 
                 { 
                     if (errno == ECONNRESET) close_client(i); /* connection reset by client */
                     // else err_sys("read error");
@@ -98,43 +96,35 @@ int main(int argc, char **argv)
 
                     if (command == NULL) goto next;
                     
-                    if (buf[0] == ':') 
-                    {
-                        command += 1;
-                        if (name_client.find(command) == name_client.end()) {
-                            not_registered(sockfd, command);
-                            goto next;
-                        }
-                        command = strtok(NULL, new_line);
-                    }
+                    // if (buf[0] == ':') 
+                    // {
+                    //     command += 1;
+                    //     if ( check_nick_name(command) )// name_client.find(command) == name_client.end()) {
+                    //         not_registered(sockfd, command);
+                    //         goto next;
+                    //     }
+                    //     command = strtok(NULL, new_line);
+                    // }
 
                     /* set nickname */
                     if (strcmp(command, "NICK") == 0) 
                     {
                         char *new_nick;
                         new_nick = strtok(NULL, new_line);
-                        
-                        std::string s(new_nick);
 
-                        // new client set nickname
-                        if (fd_name[sockfd].size() == 0) 
-                        {   
-                            if (check_nick_name(sockfd, new_nick)) goto next;
-                            name_client[s] = tmp_client;
-                            fd_name[sockfd] = s;
-                        }
                         // current client rename
+                        if (strlen(client_info[i].user_name) != 0 && strlen(client_info[i].nick_name) != 0)
+                        {   
+                            if (check_nick_name(i, new_nick, false)) goto next;
+                        }
+                        // new client set nickname
                         else 
                         {   
-                            if (name_client.find(new_nick) != name_client.end()) 
-                            {
-                                nickname_in_use(sockfd, new_nick);
-                                goto next;
-                            }
-                            name_client[s] = name_client[fd_name[sockfd]];
-                            name_client.erase(fd_name[sockfd]);
-                            fd_name[sockfd] = s;
+                            if (check_nick_name(i, new_nick, true)) goto next;   
                         }
+
+                        strcpy(client_info[i].nick_name, new_nick);
+                        goto next;
                     }
                     /* register new client */
                     else if (strcmp(command, "USER") == 0) 
@@ -144,20 +134,34 @@ int main(int argc, char **argv)
                         {
                             args[j] = strtok(NULL, new_line);
                             if (args[j] == NULL) {
-                                not_enough_args(sockfd, command);
+                                not_enough_args(i, command);
                                 goto next;
                             }
                         }
                         
                         // register new user and show welcome message
-                        if (fd_name[sockfd].size() == 0) reregister_error(sockfd);
-                        else set_user(fd_name[sockfd], args);
+                        if ( strlen(client_info[i].user_name) != 0) reregister_error(i);
+                        else 
+                        {
+                            strcpy(client_info[i].user_name, args[0]);
+                            strcpy(client_info[i].real_name, args[3]+1);
+                        }
 
-                        welcome_new_client(fd_name[sockfd]);
+                        welcome_new_client(i);
+                        goto next;
                     }
-                    else if (strcmp(command, "PING") == 0) {
+                    
+                    if ( strlen(client_info[i].user_name) == 0 ) 
+                    {
+                        if ( strlen(client_info[i].nick_name) == 0 ) not_registered(i);
+                        else not_registered(i, client_info[i].nick_name);
+                        goto next;
+                    }
+
+                    if (strcmp(command, "PING") == 0) {
                         char *host = strtok(NULL, new_line);
-                        print_ping(sockfd, host);
+                        if (host == NULL) no_origin(i);
+                        print_ping(client[i].fd, host);
                     }
                     /* list all wanted channels and their information */
                     else if (strcmp(command, "LIST") == 0) 
@@ -166,19 +170,14 @@ int main(int argc, char **argv)
                         // list all channels
                         if (channel == NULL)
                         {
-                            print_channel_info(sockfd);
+                            print_channel_info(i);
                         }
-                        // only list specified channels
+                        // only list specified channel
                         else
                         {
-                            std::vector<std::string> wanted_channels;
-                            do
-                            {
-                                wanted_channels.push_back(channel);
-                                channel = strtok(NULL, new_line);
-                            }while (channel != NULL);
-                            print_channel_info(sockfd, wanted_channels);
-                            
+                            if (channels.find(channel) != channels.end()) {
+                                print_channel_info(i, channel);
+                            }                            
                         }
                     }
                     /* join a channel */
@@ -188,67 +187,57 @@ int main(int argc, char **argv)
                         char *channel = strtok(NULL, new_line);
                         if (channel == NULL)
                         {
-                            not_enough_args(sockfd, command);
+                            not_enough_args(i, command);
                             goto next;
                         }
                         
-                        if (channel[0] != '#') no_such_channel(sockfd, channel);
-                        std::vector<std::string> join_channel;
-                        do 
-                        {
-                            join_channel.push_back(channel);
-                            
-                            channel = strtok(NULL, ",\0");
-                        } while (channel != NULL);
+                        if (channel[0] != '#') {
+                            no_such_channel(i, channel);
+                            char tmp[100];
+                            strcpy(tmp, channel);
+                            strcpy(channel, "#");
+                            strcat(channel, tmp);
+                        }
 
-                        print_join(sockfd, join_channel);
+                        print_join(i, channel);
                     }
                     else if (strcmp(command, "TOPIC") == 0)
                     {
-                        char *channel_char = strtok(NULL, new_line);
-                        if (channel_char == NULL)
+                        char *channel = strtok(NULL, new_line);
+                        if (channel == NULL)
                         {
-                            not_enough_args(sockfd, command);
+                            not_enough_args(i, command);
                             goto next;
                         }
 
-                        std::string channel(channel_char);
-                        if (channels.find(channel) == channels.end()) 
+                        if (!check_user_in_channel(i, channel)) 
                         {
-                            no_such_channel(sockfd, channel);
+                            not_on_channel(i, channel);
                             goto next;
                         }
-
-                        char *topic_char = strtok(NULL, "\0");
-                        if (topic_char == NULL) 
-                            print_topic(sockfd, "", channel);
+                        
+                        char *topic = strtok(NULL, "\0");
+                        if (topic == NULL) 
+                            print_topic(i, "", channel);
                         else 
                         {
-                            topic_char += 1;
-                            std::string topic(topic_char);
-                            print_topic(sockfd, topic, channel);
+                            print_topic(i, topic, channel);
                         }
                     }
                     /* list all clients' nickname in some channels */
                     else if (strcmp(command, "NAMES") == 0)
                     {
-                        char *channel_char = strtok(NULL, new_line);
+                        char *channel = strtok(NULL, new_line);
 
                         // list every channels' client
-                        if (channel_char == NULL)
+                        if (channel == NULL)
                         {
-                            print_channel_users(sockfd);
+                            print_channel_users(i);
                         }
                         // only list specified channels' clients
                         else
                         {
-                            std::vector<std::string> wanted_channels;
-                            do
-                            {
-                                wanted_channels.push_back(std::string (channel_char));
-                                channel_char = strtok(NULL, new_line);
-                            }while (channel_char != NULL);
-                            print_channel_users(sockfd, wanted_channels);
+                            print_channel_users(i, channel);
                         } 
                     }
                     else if (strcmp(command, "PART") == 0)
@@ -256,39 +245,54 @@ int main(int argc, char **argv)
                         char *channel = strtok(NULL, new_line);
                         if (channel == NULL) 
                         {
-                            not_enough_args(sockfd, command);
+                            not_enough_args(i, command);
                             goto next;
                         }
                         
-                        print_part(sockfd, channel);
+                        if (!check_user_in_channel(i, channel)) 
+                        {
+                            not_on_channel(i, channel);
+                            goto next;
+                        }
+                        print_part(i, channel);
                     }
                     /* print all users' and their information */
                     else if (strcmp(command, "USERS") == 0)
                     {
-                        print_all_users(sockfd);
+                        print_all_users(i);
                     }
                     else if (strcmp(command, "PRIVMSG") == 0) 
                     {
-                        char *to_char = strtok(NULL, new_line);
-                        if (to_char == NULL) {
-                            no_recipient(sockfd, command);
+                        char *channel = strtok(NULL, new_line);
+                        if (channel == NULL) {
+                            no_recipient(i, command);
                             goto next;
                         }
-                        std::string to(to_char);
 
                         char *msg = strtok(NULL, new_line);
+                        
+                        if (channels.find(channel) == channels.end())
+                        {
+                            if (msg == NULL) no_such_channel(i, channel);
+                            else no_such_nick_channel(i, channel);
+                            goto next;
+                        }
                         if (msg == NULL) 
                         {
-                            no_text_send(sockfd);
+                            no_text_send(i);
                             goto next;
                         }
 
+                        if (!check_user_in_channel(i, channel)) 
+                        {
+                            not_on_channel(i, channel);
+                            goto next;
+                        }
                         msg += 1;
-                        if (to[0] == '#') print_msg_channel(sockfd, msg, to);
-                        // else print_private_msg(msg, to);
+                        print_msg_channel(i, msg, channel);
                     }
                     else if (strcmp(command, "QUIT") == 0) close_client(i);
-                    else error_cmd(connfd, command);
+                    else error_cmd(i, command);
                 }
 next:                
                 if (--nready <= 0) break; /* no more readable descs */
