@@ -22,4 +22,3 @@ void close_client(int index)
 
     client_info[index].reset();
 }
-

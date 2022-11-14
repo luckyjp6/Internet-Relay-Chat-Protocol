@@ -116,14 +116,16 @@ int main(int argc, char **argv)
                         if (strlen(client_info[i].user_name) != 0 && strlen(client_info[i].nick_name) != 0)
                         {   
                             if (check_nick_name(i, new_nick, false)) goto next;
+                            strcpy(client_info[i].nick_name, new_nick);
                         }
                         // new client set nickname
                         else 
                         {   
                             if (check_nick_name(i, new_nick, true)) goto next;   
+                            strcpy(client_info[i].nick_name, new_nick);
+                            welcome_new_client(i);
                         }
 
-                        strcpy(client_info[i].nick_name, new_nick);
                         goto next;
                     }
                     /* register new client */
@@ -147,7 +149,7 @@ int main(int argc, char **argv)
                             strcpy(client_info[i].real_name, args[3]+1);
                         }
 
-                        welcome_new_client(i);
+                        if ( strlen(client_info[i].nick_name) != 0) welcome_new_client(i);
                         goto next;
                     }
                     

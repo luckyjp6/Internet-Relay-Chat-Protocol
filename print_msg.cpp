@@ -45,7 +45,7 @@ void welcome_new_client(int index)
     write(connfd, welcome_msg, strlen(welcome_msg));
 }
 
-void print_ping(int connfd) 
+void print_ping(int connfd, char *host) 
 {
     char msg[MSG_SIZE];
     memset(msg, '\0', MSG_SIZE);
