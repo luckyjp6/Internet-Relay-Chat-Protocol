@@ -1,6 +1,7 @@
 #ifndef ERROR_H
 #define ERROR_H
 
+void no_such_nick(int connfd, std::string channel); // 401
 void no_such_channel(int connfd, std::string channel); // 403
 void no_host(int connfd); // 409
 

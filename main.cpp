@@ -48,7 +48,7 @@ int main(int argc, char **argv)
                 if (i > maxi) maxi = i;
             }  
 
-            if (nready == 0) break;          
+            // if (nready == 0) break;          
         }
         
         /* check all clients */

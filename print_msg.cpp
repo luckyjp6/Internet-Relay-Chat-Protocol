@@ -287,7 +287,7 @@ void print_msg_channel(int connfd, char *text, std::string channel_name)
 {
     if (channels.find(channel_name) == channels.end())
     {
-        no_such_channel(connfd, channel_name);
+        no_such_nick(connfd, channel_name);
         return;
     }
     char msg[MSG_SIZE];

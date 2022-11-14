@@ -1,5 +1,13 @@
 #include "functions.h"
 
+void no_such_nick(int connfd, std::string channel)
+{
+    char error[MSG_SIZE];
+    memset(error, '\0', MSG_SIZE);
+    sprintf(error, ":%s 401 %s %s :No such nick/channel\n", SERVER_NAME, fd_name[connfd].data(), channel.data());
+    write(connfd, error, strlen(error));
+}
+
 void no_such_channel(int connfd, std::string channel)
 {
     char error[MSG_SIZE];
