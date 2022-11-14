@@ -29,22 +29,18 @@
 
 struct Client_info 
 {
-    int connfd;
+    char nick_name[NAME_LENGTH];
     char user_name[NAME_LENGTH];
     char real_name[NAME_LENGTH];
     sockaddr_in addr;
-}; 
 
-struct broadcast_msg
-{
-    int except;
-    char msg[MSG_SIZE];
-    int msg_size;
-    void set(int e) {
-        except = e;
-        msg_size = strlen(msg);
+    void reset()
+    {
+        memset(nick_name, '\0', NAME_LENGTH);
+        memset(user_name, '\0', NAME_LENGTH);
+        memset(real_name, '\0', NAME_LENGTH);
     }
-};
+}; 
 
 // use map to impliment the channel
 struct channel_info
@@ -57,14 +53,11 @@ struct channel_info
 };
 
 extern int maxi, num_user;
-extern std::map<std::string, Client_info> name_client;
-extern std::string fd_name[OPEN_MAX];
+extern Client_info client_info[OPEN_MAX];
 extern pollfd client[OPEN_MAX];
-extern std::vector<broadcast_msg> b_msg;
 extern std::map<std::string, channel_info> channels;
 
 void init();
-int my_connect(int &listenfd, char *port, sockaddr_in &servaddr);
 
 void close_client(int index);
 
