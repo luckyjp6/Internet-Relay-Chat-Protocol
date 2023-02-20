@@ -1,4 +1,4 @@
-#include "functions.h"
+#include "error_func.h"
 
 void no_such_nick_channel(int index, std::string channel)
 {
@@ -98,14 +98,6 @@ bool check_nick_name(int index, char *nick_name, bool new_client)
 
     return false;
 }
-
-// void nickname_in_use(int index, char *nick_name)
-// {
-//     char error[MSG_SIZE];
-//     memset(error, '\0', MSG_SIZE);
-//     sprintf(error, ":%s 433 %s :Nickname is already in use\n", SERVER_NAME, nick_name);
-//     write(client[index].fd, error, strlen(error));
-// }
 
 void not_on_channel(int index, std::string channel)
 {
