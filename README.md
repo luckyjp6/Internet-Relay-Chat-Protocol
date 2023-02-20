@@ -1,12 +1,12 @@
 # Internet Relay Chat Protocol
+This repo implement the IRC server.
 The IRC document：https://www.rfc-editor.org/rfc/rfc1459.html.  
-This repo impliment the IRC server.
 
 ## Usage
 Use instruction ```make``` to start the IRC server.
 You may use any IRC client application to interact with our IRC server. For example, Wee Enhanced Environment for Chat (Weechat, https://weechat.org/) is the application we used to test the server.
 
-## Impliment Instructions
+## Implemented Instructions
 - NICK: Set a nickname.
 - USER: Register new user.
 - PING: Indicate that the connection is still alive.
